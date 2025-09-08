@@ -38,6 +38,13 @@ export const TrackerView: React.FC<TrackerViewProps> = ({
       setRefillAmount('1');
     }
   };
+
+  const handleFullTank = () => {
+    const amountNeeded = bike.tankSize - petrol;
+    if (amountNeeded > 0.01) { // Add a small threshold
+        onRefill(amountNeeded);
+    }
+  };
   
   const speedColor = currentSpeed > bike.optimalSpeed.max ? 'text-red-400' : currentSpeed < bike.optimalSpeed.min && currentSpeed > 5 ? 'text-yellow-400' : 'text-cyan-400';
 
@@ -45,7 +52,7 @@ export const TrackerView: React.FC<TrackerViewProps> = ({
     <div className="flex flex-col items-center gap-6">
       <div className="w-full max-w-sm bg-slate-800/50 p-4 rounded-lg shadow-lg text-center">
         <h2 className="text-xl font-bold">{bike.make} {bike.model}</h2>
-        <p className="text-sm text-slate-400">Average: {bike.average} km/L</p>
+        <p className="text-sm text-slate-400">Average: {bike.average} km/L | Tank: {bike.tankSize} L</p>
       </div>
 
       {/* Speedometer */}
@@ -90,22 +97,35 @@ export const TrackerView: React.FC<TrackerViewProps> = ({
             Start Tracking
           </button>
         )}
-        <form onSubmit={handleRefillSubmit} className="flex gap-2">
-          <input 
-            type="number"
-            value={refillAmount}
-            onChange={(e) => setRefillAmount(e.target.value)}
-            step="0.1"
-            min="0.1"
-            className="w-full bg-slate-700 text-white p-3 rounded-full border border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:outline-none"
-            placeholder="Liters"
-          />
-          <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full transition-colors">
-            Refill
+        
+        {/* Refuel Controls */}
+        <div className="bg-slate-800 p-4 rounded-lg space-y-3">
+          <h3 className="text-center text-sm font-medium text-slate-300">Refuel</h3>
+          <form onSubmit={handleRefillSubmit} className="flex gap-2">
+            <input 
+              type="number"
+              value={refillAmount}
+              onChange={(e) => setRefillAmount(e.target.value)}
+              step="0.1"
+              min="0.1"
+              className="w-full bg-slate-700 text-white p-3 rounded-full border border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:outline-none text-center"
+              placeholder="Liters"
+            />
+            <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full transition-colors">
+              Add
+            </button>
+          </form>
+          <button
+            onClick={handleFullTank}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-full transition-colors text-sm disabled:bg-slate-600 disabled:opacity-50"
+            disabled={petrol >= bike.tankSize}
+          >
+            Fill to Full
           </button>
-        </form>
+        </div>
+
         <button onClick={onReset} className="w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-full transition-colors text-sm">
-            Reset Data
+            Reset Data & Refill Tank
         </button>
       </div>
     </div>

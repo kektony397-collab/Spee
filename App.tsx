@@ -15,7 +15,7 @@ import * as db from './services/dbService';
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavigationTab>('Tracker');
   const [currentBike, setCurrentBike] = useState<Bike>(DEFAULT_BIKE);
-  const [petrol, setPetrol] = useState<number>(1); // Default 1L
+  const [petrol, setPetrol] = useState<number>(DEFAULT_BIKE.tankSize);
   const [isTracking, setIsTracking] = useState<boolean>(false);
   const [trackingData, setTrackingData] = useState<TrackingData>({
     distance: 0,
@@ -34,6 +34,10 @@ const App: React.FC = () => {
       if (appState) {
         setCurrentBike(appState.currentBike);
         setPetrol(appState.petrol);
+      } else {
+        // First time launch: start with a full tank for the default bike
+        setCurrentBike(DEFAULT_BIKE);
+        setPetrol(DEFAULT_BIKE.tankSize);
       }
       const tripHistory = await db.getAllTrips();
       setHistory(tripHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
@@ -66,6 +70,10 @@ const App: React.FC = () => {
   const handleStopTracking = async () => {
     stopTracking();
     setIsTracking(false);
+
+    // Decrease petrol based on distance traveled
+    const fuelConsumed = trackingData.distance / currentBike.average;
+    setPetrol(prev => Math.max(0, prev - fuelConsumed));
 
     if (trackingData.distance > 0.1) { // Only save trips longer than 100m
       const speedHistory = trackingData.speedHistory.filter(s => s > 0);
