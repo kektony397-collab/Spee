@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export const TrackerIcon = () => (
@@ -24,4 +23,11 @@ export const AiIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
   </svg>
+);
+
+export const HistoryIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.279A5.043 5.043 0 016.92 2.5a1 1 0 00-1.04.16L3.6 4.6A1 1 0 003 5.44V7a1 1 0 001 1h1.556a1 1 0 00.84-.36l1.92-2.88a1 1 0 00.16-1.04A5.05 5.05 0 019 3.28z" clipRule="evenodd" />
+    </svg>
 );

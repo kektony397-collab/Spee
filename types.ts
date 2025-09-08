@@ -1,4 +1,3 @@
-
 export interface Bike {
   make: string;
   model: string;
@@ -20,4 +19,13 @@ export interface Position {
   lng: number;
 }
 
-export type NavigationTab = 'Tracker' | 'Calculator' | 'Garage' | 'AI';
+export type NavigationTab = 'Tracker' | 'Calculator' | 'Garage' | 'AI' | 'History';
+
+export interface TripRecord extends TrackingData {
+  id?: number;
+  date: string;
+  bikeMake: string;
+  bikeModel: string;
+  avgSpeed: number;
+  maxSpeed: number;
+}

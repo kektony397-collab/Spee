@@ -1,15 +1,16 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { TrackerView } from './components/views/TrackerView';
 import { CalculatorView } from './components/views/CalculatorView';
 import { GarageView } from './components/views/GarageView';
 import { AiView } from './components/views/AiView';
+import { HistoryView } from './components/views/HistoryView';
 import { BottomNavBar } from './components/BottomNavBar';
 import { Footer } from './components/Footer';
 import { useGeolocation } from './hooks/useGeolocation';
 import { DEFAULT_BIKE, BIKE_DATA } from './constants';
-import type { Bike, NavigationTab, TrackingData, Position } from './types';
+import type { Bike, NavigationTab, TrackingData, TripRecord } from './types';
 import { getMileageTips } from './services/geminiService';
+import * as db from './services/dbService';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavigationTab>('Tracker');
@@ -22,19 +23,22 @@ const App: React.FC = () => {
   });
   const [geminiAdvice, setGeminiAdvice] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
+  const [history, setHistory] = useState<TripRecord[]>([]);
 
   const { position, speed, distance, error, startTracking, stopTracking, resetDistance } = useGeolocation();
 
   useEffect(() => {
-    // Load state from localStorage on mount
-    const savedBike = localStorage.getItem('currentBike');
-    const savedPetrol = localStorage.getItem('petrol');
-    if (savedBike) {
-      setCurrentBike(JSON.parse(savedBike));
-    }
-    if (savedPetrol) {
-      setPetrol(parseFloat(savedPetrol));
-    }
+    const loadData = async () => {
+      await db.initDB();
+      const appState = await db.getAppState();
+      if (appState) {
+        setCurrentBike(appState.currentBike);
+        setPetrol(appState.petrol);
+      }
+      const tripHistory = await db.getAllTrips();
+      setHistory(tripHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    };
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -47,9 +51,7 @@ const App: React.FC = () => {
   }, [distance, speed, isTracking]);
 
   useEffect(() => {
-    // Save state to localStorage on change
-    localStorage.setItem('currentBike', JSON.stringify(currentBike));
-    localStorage.setItem('petrol', petrol.toString());
+    db.saveAppState({ currentBike, petrol });
   }, [currentBike, petrol]);
   
 
@@ -61,13 +63,32 @@ const App: React.FC = () => {
     setIsTracking(true);
   };
 
-  const handleStopTracking = () => {
+  const handleStopTracking = async () => {
     stopTracking();
     setIsTracking(false);
+
+    if (trackingData.distance > 0.1) { // Only save trips longer than 100m
+      const speedHistory = trackingData.speedHistory.filter(s => s > 0);
+      const avgSpeed = speedHistory.reduce((a, b) => a + b, 0) / speedHistory.length || 0;
+      const maxSpeed = Math.max(...speedHistory, 0);
+
+      const newTrip: TripRecord = {
+        date: new Date().toISOString(),
+        distance: trackingData.distance,
+        speedHistory: trackingData.speedHistory,
+        bikeMake: currentBike.make,
+        bikeModel: currentBike.model,
+        avgSpeed,
+        maxSpeed
+      };
+      await db.addTrip(newTrip);
+      const updatedHistory = await db.getAllTrips();
+      setHistory(updatedHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    }
   };
 
   const handleRefill = (amount: number) => {
-    setPetrol(prev => prev + amount);
+    setPetrol(prev => Math.min(currentBike.tankSize, prev + amount));
   };
   
   const handleSelectBike = (bike: Bike) => {
@@ -92,6 +113,23 @@ const App: React.FC = () => {
       setIsAiLoading(false);
     }
   }, [trackingData]);
+  
+  const handleResetTracker = () => {
+    if (isTracking) stopTracking();
+    resetDistance();
+    setTrackingData({ distance: 0, speedHistory: [] });
+    setPetrol(currentBike.tankSize); // Refill to full tank on reset
+  };
+  
+  const handleDeleteTrip = async (id: number) => {
+    await db.deleteTrip(id);
+    setHistory(prev => prev.filter(trip => trip.id !== id));
+  };
+  
+  const handleClearHistory = async () => {
+    await db.clearTrips();
+    setHistory([]);
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -106,6 +144,7 @@ const App: React.FC = () => {
             onStart={handleStartTracking}
             onStop={handleStopTracking}
             onRefill={handleRefill}
+            onReset={handleResetTracker}
           />
         );
       case 'Calculator':
@@ -119,6 +158,8 @@ const App: React.FC = () => {
             isLoading={isAiLoading}
             isTracking={isTracking}
           />;
+      case 'History':
+        return <HistoryView trips={history} onDelete={handleDeleteTrip} onClear={handleClearHistory} />;
       default:
         return null;
     }

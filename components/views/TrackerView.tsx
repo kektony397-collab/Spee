@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import type { Bike, TrackingData } from '../../types';
 
@@ -11,6 +10,7 @@ interface TrackerViewProps {
   onStart: () => void;
   onStop: () => void;
   onRefill: (amount: number) => void;
+  onReset: () => void;
 }
 
 export const TrackerView: React.FC<TrackerViewProps> = ({
@@ -22,12 +22,13 @@ export const TrackerView: React.FC<TrackerViewProps> = ({
   onStart,
   onStop,
   onRefill,
+  onReset,
 }) => {
   const [refillAmount, setRefillAmount] = useState('1');
 
   const totalRange = useMemo(() => petrol * bike.average, [petrol, bike.average]);
   const remainingRange = useMemo(() => Math.max(0, totalRange - trackingData.distance), [totalRange, trackingData.distance]);
-  const isReserve = useMemo(() => (remainingRange / totalRange) * 100 <= 15, [remainingRange, totalRange]);
+  const isReserve = useMemo(() => petrol > 0 && totalRange > 0 && (petrol / bike.tankSize) * 100 <= 15, [petrol, bike.tankSize, totalRange]);
 
   const handleRefillSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,10 +100,13 @@ export const TrackerView: React.FC<TrackerViewProps> = ({
             className="w-full bg-slate-700 text-white p-3 rounded-full border border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:outline-none"
             placeholder="Liters"
           />
-          <button type="submit" className="bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-full transition-colors">
+          <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full transition-colors">
             Refill
           </button>
         </form>
+        <button onClick={onReset} className="w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-full transition-colors text-sm">
+            Reset Data
+        </button>
       </div>
     </div>
   );

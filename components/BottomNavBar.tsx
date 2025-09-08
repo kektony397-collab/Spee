@@ -1,7 +1,6 @@
-
 import React from 'react';
 import type { NavigationTab } from '../types';
-import { TrackerIcon, CalculatorIcon, GarageIcon, AiIcon } from './icons/NavIcons';
+import { TrackerIcon, CalculatorIcon, GarageIcon, AiIcon, HistoryIcon } from './icons/NavIcons';
 
 interface BottomNavBarProps {
   activeTab: NavigationTab;
@@ -13,6 +12,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, setActive
     { tab: 'Tracker', label: 'Tracker', icon: <TrackerIcon /> },
     { tab: 'Calculator', label: 'Calculate', icon: <CalculatorIcon /> },
     { tab: 'Garage', label: 'Garage', icon: <GarageIcon /> },
+    { tab: 'History', label: 'History', icon: <HistoryIcon /> },
     { tab: 'AI', label: 'AI Coach', icon: <AiIcon /> },
   ];
 
