@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback } from 'react';
 import type { Position } from '../types';
 
@@ -41,53 +40,64 @@ export const useGeolocation = () => {
       return;
     }
 
-    if (watchId.current) {
-      navigator.geolocation.clearWatch(watchId.current);
+    const startWatch = () => {
+      if (watchId.current) {
+        navigator.geolocation.clearWatch(watchId.current);
+      }
+  
+      const options: PositionOptions = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      };
+  
+      watchId.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const currentPosition = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          };
+  
+          setPosition(currentPosition);
+          // Speed is in m/s, convert to km/h
+          setSpeed(pos.coords.speed ? pos.coords.speed * 3.6 : 0);
+          setError(null);
+          
+          if (lastPosition.current) {
+              const newDistance = haversineDistance(lastPosition.current, currentPosition);
+              setDistance(prevDistance => prevDistance + newDistance);
+          }
+          lastPosition.current = currentPosition;
+  
+        },
+        (err) => {
+          switch (err.code) {
+            case err.PERMISSION_DENIED:
+              setError("Location access was denied. Please enable it in your browser settings.");
+              break;
+            case err.POSITION_UNAVAILABLE:
+              setError("Location information is unavailable.");
+              break;
+            case err.TIMEOUT:
+              setError("The request to get user location timed out.");
+              break;
+            default:
+              setError("An unknown error occurred.");
+              break;
+          }
+        },
+        options
+      );
     }
 
-    const options: PositionOptions = {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
-    };
+    navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+      if (result.state === 'granted' || result.state === 'prompt') {
+        startWatch();
+      } else if (result.state === 'denied') {
+        setError("Location access was denied. Please enable it in your browser settings.");
+      }
+    });
 
-    watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const currentPosition = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        };
-
-        setPosition(currentPosition);
-        // Speed is in m/s, convert to km/h
-        setSpeed(pos.coords.speed ? pos.coords.speed * 3.6 : 0);
-        setError(null);
-        
-        if (lastPosition.current) {
-            const newDistance = haversineDistance(lastPosition.current, currentPosition);
-            setDistance(prevDistance => prevDistance + newDistance);
-        }
-        lastPosition.current = currentPosition;
-
-      },
-      (err) => {
-        switch (err.code) {
-          case err.PERMISSION_DENIED:
-            setError("Location access was denied. Please enable it in your browser settings.");
-            break;
-          case err.POSITION_UNAVAILABLE:
-            setError("Location information is unavailable.");
-            break;
-          case err.TIMEOUT:
-            setError("The request to get user location timed out.");
-            break;
-          default:
-            setError("An unknown error occurred.");
-            break;
-        }
-      },
-      options
-    );
   }, []);
 
   const stopTracking = useCallback(() => {

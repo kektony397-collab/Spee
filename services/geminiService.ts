@@ -1,21 +1,16 @@
-
 import { GoogleGenAI } from "@google/genai";
 import type { TrackingData } from "../types";
 
 const API_KEY = process.env.API_KEY;
 
-if (!API_KEY) {
-  // In a real app, you might want to handle this more gracefully,
-  // but for this example, we'll throw an error if the key is missing.
-  console.error("API_KEY environment variable not set.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
-
 export const getMileageTips = async (drivingData: TrackingData): Promise<string> => {
   if (!API_KEY) {
-    return "Error: Gemini API key is not configured.";
+    const errorMessage = "Error: Gemini API key is not configured. Please ensure the API_KEY environment variable is set correctly for this deployment.";
+    console.error(errorMessage);
+    return errorMessage;
   }
+  
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   
   const avgSpeed =
     drivingData.speedHistory.reduce((a, b) => a + b, 0) /
@@ -47,6 +42,10 @@ export const getMileageTips = async (drivingData: TrackingData): Promise<string>
 
 export const speak = (text: string) => {
   if ('speechSynthesis' in window) {
+    // Cancel any ongoing speech before starting a new one
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
     window.speechSynthesis.speak(utterance);

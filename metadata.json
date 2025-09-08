@@ -1,5 +1,7 @@
 {
   "name": "Copy of Bike Advance",
   "description": "A smart bike dashboard that tracks speed, mileage, and fuel consumption using GPS. It features an AI assistant powered by Gemini to provide real-time suggestions for improving fuel efficiency.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }
