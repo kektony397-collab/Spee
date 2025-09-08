@@ -29,6 +29,7 @@ export const TrackerView: React.FC<TrackerViewProps> = ({
   const totalRange = useMemo(() => petrol * bike.average, [petrol, bike.average]);
   const remainingRange = useMemo(() => Math.max(0, totalRange - trackingData.distance), [totalRange, trackingData.distance]);
   const isReserve = useMemo(() => petrol > 0 && totalRange > 0 && (petrol / bike.tankSize) * 100 <= 15, [petrol, bike.tankSize, totalRange]);
+  const isTankFull = useMemo(() => petrol >= bike.tankSize, [petrol, bike.tankSize]);
 
   const handleRefillSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,19 +109,25 @@ export const TrackerView: React.FC<TrackerViewProps> = ({
               onChange={(e) => setRefillAmount(e.target.value)}
               step="0.1"
               min="0.1"
-              className="w-full bg-slate-700 text-white p-3 rounded-full border border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:outline-none text-center"
+              max={(bike.tankSize - petrol).toFixed(2)}
+              className="w-full bg-slate-700 text-white p-3 rounded-full border border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:outline-none text-center disabled:bg-slate-600 disabled:opacity-50"
               placeholder="Liters"
+              disabled={isTankFull}
             />
-            <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full transition-colors">
+            <button 
+              type="submit" 
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full transition-colors disabled:bg-slate-600 disabled:opacity-50"
+              disabled={isTankFull}
+            >
               Add
             </button>
           </form>
           <button
             onClick={handleFullTank}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-full transition-colors text-sm disabled:bg-slate-600 disabled:opacity-50"
-            disabled={petrol >= bike.tankSize}
+            disabled={isTankFull}
           >
-            Fill to Full
+            {isTankFull ? 'Tank is Full' : 'Fill to Full'}
           </button>
         </div>
 
