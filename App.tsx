@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { TrackerView } from './components/views/TrackerView';
 import { CalculatorView } from './components/views/CalculatorView';
 import { GarageView } from './components/views/GarageView';
@@ -9,7 +9,7 @@ import { Footer } from './components/Footer';
 import { useGeolocation } from './hooks/useGeolocation';
 import { DEFAULT_BIKE, BIKE_DATA } from './constants';
 import type { Bike, NavigationTab, TrackingData, TripRecord } from './types';
-import { getMileageTips } from './services/geminiService';
+import { getMileageTips, speak } from './services/geminiService';
 import * as db from './services/dbService';
 
 const App: React.FC = () => {
@@ -24,8 +24,15 @@ const App: React.FC = () => {
   const [geminiAdvice, setGeminiAdvice] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [history, setHistory] = useState<TripRecord[]>([]);
+  const [isVoiceAssistantOn, setIsVoiceAssistantOn] = useState<boolean>(false);
 
   const { position, speed, distance, error, startTracking, stopTracking, resetDistance } = useGeolocation();
+  
+  // Refs for voice assistant alerts to prevent spamming
+  const lastDistanceAlertKm = useRef(0);
+  const speedingTimer = useRef<number | null>(null);
+  const lowFuelAlertGiven = useRef(false);
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -58,11 +65,68 @@ const App: React.FC = () => {
     db.saveAppState({ currentBike, petrol });
   }, [currentBike, petrol]);
   
+  // Effect for real-time voice assistant alerts
+  useEffect(() => {
+    if (!isTracking || !isVoiceAssistantOn) {
+      if (speedingTimer.current) {
+        clearTimeout(speedingTimer.current);
+        speedingTimer.current = null;
+      }
+      return;
+    }
+
+    const remainingRange = Math.max(0, (petrol * currentBike.average) - trackingData.distance);
+    const isReserve = petrol > 0 && (petrol / currentBike.tankSize) * 100 <= 15;
+
+    // Distance Alert
+    const DISTANCE_ALERT_INTERVAL = 5; // Trigger every 5 km
+    const currentDistanceKm = Math.floor(trackingData.distance);
+
+    if (currentDistanceKm > 0 && currentDistanceKm >= lastDistanceAlertKm.current + DISTANCE_ALERT_INTERVAL) {
+        const message = `You have covered ${currentDistanceKm} kilometers. Remaining range is approximately ${Math.floor(remainingRange)} kilometers.`;
+        speak(message);
+        lastDistanceAlertKm.current = currentDistanceKm;
+    }
+    
+    // Speeding Alert
+    if (speed > currentBike.optimalSpeed.max) {
+      if (!speedingTimer.current) {
+        speedingTimer.current = window.setTimeout(() => {
+          speak("For better mileage, please slow down to the optimal speed.");
+          speedingTimer.current = null; // Allow alert to re-trigger after some time
+        }, 10000); // 10 seconds of continuous speeding
+      }
+    } else {
+      if (speedingTimer.current) {
+        clearTimeout(speedingTimer.current);
+        speedingTimer.current = null;
+      }
+    }
+
+    // Low Fuel Alert
+    if (isReserve && !lowFuelAlertGiven.current) {
+      speak("Fuel is low. Please refuel soon.");
+      lowFuelAlertGiven.current = true;
+    } else if (!isReserve && lowFuelAlertGiven.current) {
+      lowFuelAlertGiven.current = false; // Reset when not in reserve
+    }
+
+  }, [isTracking, isVoiceAssistantOn, trackingData.distance, speed, petrol, currentBike]);
+
+  // Cleanup timers on component unmount
+  useEffect(() => {
+    return () => {
+      if (speedingTimer.current) {
+        clearTimeout(speedingTimer.current);
+      }
+    };
+  }, []);
 
   const handleStartTracking = () => {
     resetDistance();
     setTrackingData({ distance: 0, speedHistory: [] });
     setGeminiAdvice('');
+    lastDistanceAlertKm.current = 0; // Reset alert counter
     startTracking();
     setIsTracking(true);
   };
@@ -70,6 +134,12 @@ const App: React.FC = () => {
   const handleStopTracking = async () => {
     stopTracking();
     setIsTracking(false);
+
+    // Clear any active speeding timer
+    if (speedingTimer.current) {
+        clearTimeout(speedingTimer.current);
+        speedingTimer.current = null;
+    }
 
     // Decrease petrol based on distance traveled
     const fuelConsumed = trackingData.distance / currentBike.average;
@@ -153,6 +223,8 @@ const App: React.FC = () => {
             onStop={handleStopTracking}
             onRefill={handleRefill}
             onReset={handleResetTracker}
+            isVoiceAssistantOn={isVoiceAssistantOn}
+            onToggleVoiceAssistant={setIsVoiceAssistantOn}
           />
         );
       case 'Calculator':
